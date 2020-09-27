@@ -65,6 +65,15 @@ var SortWorkerInfoOpt = cmp.Transformer("SortWorkerInfo", func(in []*base.Worker
 	return out
 })
 
+// SortSchedulerEntryOpt is a cmp.Option to sort base.SchedulerEntry for comparing slice of entries.
+var SortSchedulerEntryOpt = cmp.Transformer("SortSchedulerEntry", func(in []*base.SchedulerEntry) []*base.SchedulerEntry {
+	out := append([]*base.SchedulerEntry(nil), in...) // Copy input to avoid mutating it
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].Spec < out[j].Spec
+	})
+	return out
+})
+
 // SortStringSliceOpt is a cmp.Option to sort string slice.
 var SortStringSliceOpt = cmp.Transformer("SortStringSlice", func(in []string) []string {
 	out := append([]string(nil), in...)

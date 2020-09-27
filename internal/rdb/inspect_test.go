@@ -2983,6 +2983,55 @@ func TestListWorkers(t *testing.T) {
 	}
 }
 
+func TestWriteListClearSchedulerEntries(t *testing.T) {
+	r := setup(t)
+	now := time.Now().UTC()
+	const (
+		host        = "127.0.0.1"
+		pid         = 9876
+		schedulerID = "abc123"
+	)
+	data := []*base.SchedulerEntry{
+		&base.SchedulerEntry{
+			Spec:    "* * * * *",
+			Type:    "foo",
+			Payload: nil,
+			Opts:    []string{},
+			Next:    now.Add(5 * time.Hour),
+			Prev:    now.Add(-2 * time.Hour),
+		},
+		&base.SchedulerEntry{
+			Spec:    "@every 20m",
+			Type:    "bar",
+			Payload: map[string]interface{}{"fiz": "baz"},
+			Opts:    []string{},
+			Next:    now.Add(1 * time.Minute),
+			Prev:    now.Add(-19 * time.Minute),
+		},
+	}
+
+	if err := r.WriteSchedulerEntries(host, pid, schedulerID, data, 30*time.Second); err != nil {
+		t.Fatalf("WriteSchedulerEnties failed: %v", err)
+	}
+	entries, err := r.ListSchedulerEntries()
+	if err != nil {
+		t.Fatalf("ListSchedulerEntries failed: %v", err)
+	}
+	if diff := cmp.Diff(data, entries, h.SortSchedulerEntryOpt); diff != "" {
+		t.Errorf("ListSchedulerEntries() = %v, want %v; (-want,+got)\n%s", entries, data, diff)
+	}
+	if err := r.ClearSchedulerEntries(host, pid, schedulerID); err != nil {
+		t.Fatalf("ClearSchedulerEntries failed: %v", err)
+	}
+	entries, err = r.ListSchedulerEntries()
+	if err != nil {
+		t.Fatalf("ListSchedulerEntries() after clear failed: %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("found %d entries, want 0 after clearing", len(entries))
+	}
+}
+
 func TestPause(t *testing.T) {
 	r := setup(t)
 

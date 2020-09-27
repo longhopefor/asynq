@@ -818,6 +818,41 @@ func (r *RDB) ListWorkers() ([]*base.WorkerInfo, error) {
 	return workers, nil
 }
 
+// Note: Script also removes stale keys.
+var listSchedulerKeysCmd = redis.NewScript(`
+local now = tonumber(ARGV[1])
+local keys = redis.call("ZRANGEBYSCORE", KEYS[1], now, "+inf")
+redis.call("ZREMRANGEBYSCORE", KEYS[1], "-inf", now-1)
+return keys`)
+
+// ListSchedulerEntries returns the list of scheduler entries.
+func (r *RDB) ListSchedulerEntries() ([]*base.SchedulerEntry, error) {
+	now := time.Now().UTC()
+	res, err := listSchedulerKeysCmd.Run(r.client, []string{base.AllSchedulers}, now.Unix()).Result()
+	if err != nil {
+		return nil, err
+	}
+	keys, err := cast.ToStringSliceE(res)
+	if err != nil {
+		return nil, err
+	}
+	var entries []*base.SchedulerEntry
+	for _, key := range keys {
+		data, err := r.client.LRange(key, 0, -1).Result()
+		if err != nil {
+			continue // skip bad data
+		}
+		for _, s := range data {
+			var entry base.SchedulerEntry
+			if err := json.Unmarshal([]byte(s), &entry); err != nil {
+				continue // skip bad data
+			}
+			entries = append(entries, &entry)
+		}
+	}
+	return entries, nil
+}
+
 // Pause pauses processing of tasks from the given queue.
 func (r *RDB) Pause(qname string) error {
 	key := base.PausedKey(qname)

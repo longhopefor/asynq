@@ -28,7 +28,7 @@ type Client struct {
 	rdb  *rdb.RDB
 }
 
-// NewClient and returns a new Client given a redis connection option.
+// NewClient creates a new Client instance given a redis connection option.
 func NewClient(r RedisConnOpt) *Client {
 	rdb := rdb.NewRDB(createRedisClient(r))
 	return &Client{

@@ -29,10 +29,11 @@ var DefaultQueue = QueueKey(DefaultQueueName)
 
 // Global Redis keys.
 const (
-	AllServers    = "asynq:servers" // ZSET
-	AllWorkers    = "asynq:workers" // ZSET
-	AllQueues     = "asynq:queues"  // SET
-	CancelChannel = "asynq:cancel"  // PubSub channel
+	AllServers    = "asynq:servers"    // ZSET
+	AllWorkers    = "asynq:workers"    // ZSET
+	AllSchedulers = "asynq:schedulers" // ZSET
+	AllQueues     = "asynq:queues"     // SET
+	CancelChannel = "asynq:cancel"     // PubSub channel
 )
 
 // QueueKey returns a redis key for the given queue name.
@@ -88,6 +89,11 @@ func ServerInfoKey(hostname string, pid int, sid string) string {
 // WorkersKey returns a redis key for the workers given hostname, pid, and server ID.
 func WorkersKey(hostname string, pid int, sid string) string {
 	return fmt.Sprintf("asynq:workers:{%s:%d:%s}", hostname, pid, sid)
+}
+
+// SchedulerEntriesKey returns a redis key for the scheduler entries given hostname, pid, and scheduler ID.
+func SchedulerEntriesKey(hostname string, pid int, sid string) string {
+	return fmt.Sprintf("asynq:schedulers:{%s:%d:%s}", hostname, pid, sid)
 }
 
 // UniqueKey returns a redis key with the given type, payload, and queue name.
@@ -208,10 +214,10 @@ const (
 	// StatusIdle indicates the server is in idle state.
 	StatusIdle ServerStatusValue = iota
 
-	// StatusRunning indicates the servier is up and processing tasks.
+	// StatusRunning indicates the server is up and active.
 	StatusRunning
 
-	// StatusQuiet indicates the server is up but not processing new tasks.
+	// StatusQuiet indicates the server is up but not active.
 	StatusQuiet
 
 	// StatusStopped indicates the server server has been stopped.
@@ -271,6 +277,28 @@ type WorkerInfo struct {
 	Queue   string
 	Payload map[string]interface{}
 	Started time.Time
+}
+
+// SchedulerEntry holds information about a periodic task registered with a scheduler.
+type SchedulerEntry struct {
+	// Spec describes the schedule of this entry.
+	Spec string
+
+	// Type is the task type of the periodic task.
+	Type string
+
+	// Payload is the payload of the periodic task.
+	Payload map[string]interface{}
+
+	// Opts is the options for the periodic task.
+	Opts string
+
+	// Next shows the next time the task will be enqueued.
+	Next time.Time
+
+	// Prev shows the last  time the task was enqueued.
+	// Zero time if task was never enqueued.
+	Prev time.Time
 }
 
 // Cancelations is a collection that holds cancel functions for all active tasks.
